@@ -1,42 +1,36 @@
+import abc
 from typing import List
 import sys
 
 import numpy as np
 
 from .table import Table, Metric
+from ..loader import Loader
 
 
-class WilcoxonRankSumTest(Metric):
+class PairwiseComparator(Metric):
+
     def __init__(
-        self, main_loader, alpha=0.05, flags=["+", "≈", "-"], text_fmt="{text}({flag})"
+        self,
+        main_loader: Loader,
+        flags: List[str],
+        text_fmt: str,
+        tag: str,
     ):
         self.main_loader = main_loader
-        self.alpha = alpha
         self.flags = flags
         self.text_fmt = text_fmt
+        self.tag = tag
 
-    def name() -> str:
-        return "Wilcoxon Rank Sum Test"
-
-    def __compare(self, x: np.ndarray, y: np.ndarray):
+    @abc.abstractmethod
+    def compare(self, x: np.ndarray, y: np.ndarray):
         """
         Return:
             whether x is better than y
         Arg:
             alpha: confidence
         """
-        from scipy import stats
-
-        x = x.reshape(-1)
-        y = y.reshape(-1)
-        pvalue = stats.mannwhitneyu(x, y)[1]
-        if pvalue < self.alpha:
-            if np.average(x) < np.average(y):
-                return 1  # "+"
-            else:
-                return -1  # "-"
-        else:
-            return 0  # "="
+        pass
 
     def set(self, table: Table):
         row_st = 0
@@ -59,7 +53,7 @@ class WilcoxonRankSumTest(Metric):
                 ).get("y", None)
                 if y1 is None or y2 is None:
                     continue
-                res = self.__compare(y1, y2)
+                res = self.compare(y1, y2)
                 if res == 1:
                     sumaries[col - col_st][0] += 1
                     flag = self.flags[0]
@@ -78,12 +72,76 @@ class WilcoxonRankSumTest(Metric):
             if col == main_idx + col_st:
                 table.data[-1][col] = "NA"
             else:
-                table.data[-1][col] = f"{sumary[0]}/{sumary[1]}/{sumary[2]}"
+                table.data[-1][col] = f"{self.tag}{sumary[0]}/{sumary[1]}/{sumary[2]}"
         table.data[-1][0] = "/".join(self.flags)
 
 
+class WilcoxonRankSumTest(PairwiseComparator):
+
+    def __init__(
+        self,
+        main_loader: Loader,
+        alpha: float = 0.05,
+        flags: List[str] = ["+", "≈", "-"],
+        text_fmt: str = "{text}({flag})",
+        tag: str = "",
+    ):
+        super().__init__(main_loader, flags, text_fmt, tag)
+        self.alpha = alpha
+
+    def name() -> str:
+        return "Wilcoxon Rank Sum Test"
+
+    def compare(self, x: np.ndarray, y: np.ndarray):
+        from scipy import stats
+
+        x = x.reshape(-1)
+        y = y.reshape(-1)
+        pvalue = stats.mannwhitneyu(x, y)[1]
+        if pvalue < self.alpha:
+            if np.average(x) < np.average(y):
+                return 1  # "+"
+            else:
+                return -1  # "-"
+        else:
+            return 0  # "="
+
+
+class WilcoxonSignedRankTest(PairwiseComparator):
+
+    def __init__(
+        self,
+        main_loader: Loader,
+        alpha: float = 0.05,
+        flags: List[str] = ["+", "≈", "-"],
+        text_fmt: str = "{text}({flag})",
+        tag: str = "",
+    ):
+        super().__init__(main_loader, flags, text_fmt, tag)
+        self.alpha = alpha
+
+    def name() -> str:
+        return "Wilcoxon Signed Sum Test"
+
+    def compare(self, x: np.ndarray, y: np.ndarray):
+        from scipy import stats
+
+        x = x.reshape(-1)
+        y = y.reshape(-1)
+        pvalue = stats.wilcoxon(x, y)[1]
+        if pvalue < self.alpha:
+            if np.average(x) < np.average(y):
+                return 1  # "+"
+            else:
+                return -1  # "-"
+        else:
+            return 0  # "="
+
+
 class ShowBest(Metric):
-    def __init__(self, style={"text": {"fmt": "<{text}>"}, "xlsx": {"bold": True}}):
+    def __init__(
+        self, style: dict = {"text": {"fmt": "<{text}>"}, "xlsx": {"bold": True}}
+    ):
         self.style = style
 
     def name() -> str:
@@ -107,7 +165,7 @@ class ShowBest(Metric):
 
 
 class AverageRank(Metric):
-    def __init__(self, text_fmt="{rank:.2f}"):
+    def __init__(self, text_fmt: str = "{rank:.2f}"):
         self.text_fmt = text_fmt
 
     def name() -> str:

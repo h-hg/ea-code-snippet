@@ -50,6 +50,7 @@ t1 = table.Table(key_generator)
 t1.add_loaders(cc_ddea, cl_ddea, ddea_se, bddea_ldg, srk_ddea, tt_ddea, ms_ddeo)
 
 binaryCmp = table.WilcoxonRankSumTest(cc_ddea)
+# binaryCmp = table.WilcoxonSignedRankTest(cc_ddea)
 # Latex settings
 # binaryCmp.flags = ["$+$", "$\\approx$", "$-$"]
 

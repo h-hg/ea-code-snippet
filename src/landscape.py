@@ -49,5 +49,5 @@ def draw_3d(
         if dirname:
             os.makedirs(dirname, exist_ok=True)
         plt.savefig(path)
-    plt.show()
+    # plt.show()
     plt.close()
