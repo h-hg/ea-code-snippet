@@ -1,3 +1,4 @@
+import os
 from typing import Tuple, Callable
 
 import numpy as np
@@ -9,6 +10,7 @@ def draw_3d(
     lower_bound: float | Tuple[float, float],
     upper_bound: float | Tuple[float, float],
     step: float | Tuple[float, float] = 0.1,
+    path: str = "",
 ):
     """
     objective_func : Objective function
@@ -42,4 +44,10 @@ def draw_3d(
     ax.set_xlabel(r"$x_1$")
     ax.set_ylabel(r"$x_2$")
     ax.set_zlabel(r"$z$")
+    if path:
+        dirname = os.path.dirname(path)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
+        plt.savefig(path)
     plt.show()
+    plt.close()
